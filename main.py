@@ -25,30 +25,49 @@ class ResumeParser:
         for line in lines:
             line = line.strip()
 
-            # Skip empty lines
-            if not line:
+            if not line:  # Skip empty lines
                 if current_content and current_content[-1] != "":
                     current_content.append("")
                 continue
 
-            # Header (name)
-            if line.startswith("# "):
+            if line.startswith("# "):  # Header (name)
                 self.header_info["name"] = line[2:].strip()
                 continue
 
-            # Title and specialization (e.g. '**Title** | Specialization')
-            title_spec_match = re.match(r"^\*\*([^*]+)\*\*\s*\|\s*(.+)$", line)
+            # Try: **Title** | Specialization (specialization can be empty or non-existent)
+            title_spec_match = re.match(r"^\*\*([^*]+)\*\*(?:\s*\|\s*(.*))?$", line)
             if title_spec_match:
                 self.header_info["title"] = title_spec_match.group(1).strip()
-                self.header_info["specialization"] = title_spec_match.group(2).strip()
+                if title_spec_match.group(
+                    2
+                ):  # If specialization part was matched and is not None
+                    self.header_info["specialization"] = title_spec_match.group(
+                        2
+                    ).strip()
                 continue
 
-            # Title/subtitle (fallback: all bold with |)
-            if line.startswith("**") and line.endswith("**") and "|" in line:
-                self.header_info["title"] = line[2:-2].strip()
-                continue
+            # Fallback for lines that are just bold (e.g. **Title Only**), no pipe involved.
+            # This should come AFTER the more specific title|spec match.
+            # This regex ensures the entire line is just bold content.
+            # title_only_match = re.match(r"^\*\*([^*]+(?:\s*\|\s*[^*]+)*)\*\*$", line)
+            # Simpler: if it's fully bold and wasn't title|spec, it's a title.
+            if (
+                line.startswith("**")
+                and line.endswith("**")
+                and "title" not in self.header_info
+            ):
+                # And it wasn't already captured by the more specific regex above
+                # This check is a bit weak, relies on title not being set yet
+                # A better way is to ensure the previous regex did not match, or make this one more specific.
+                # For now, let's ensure it doesn't overwrite a title from title_spec_match
+                temp_title = line[2:-2].strip()
+                if (
+                    "|" not in temp_title
+                ):  # if it's simple like **My Title**, not **A | B** (already handled)
+                    self.header_info["title"] = temp_title
+                    continue
 
-            # Contact info (starts with location or looks like contact)
+            # Contact info
             if any(
                 pattern in line.lower()
                 for pattern in ["ca |", "redwood city", "+1 (", "@", "linkedin"]
@@ -66,12 +85,10 @@ class ResumeParser:
                 current_content = []
                 continue
 
-            # Add content to current section
-            if current_section:
+            if current_section:  # Add content to current section
                 current_content.append(line)
 
-        # Add the last section
-        if current_section and current_content:
+        if current_section and current_content:  # Add the last section
             self.sections[current_section] = "\n".join(current_content).strip()
 
         return {"header": self.header_info, "sections": self.sections}
@@ -170,18 +187,15 @@ class HTMLGenerator:
 
     def process_links(self, text: str) -> str:
         """Convert markdown links to HTML"""
-        # [text](url) -> <a href="url">text</a>
         pattern = r"\[([^\]]+)\]\(([^)]+)\)"
         return re.sub(pattern, r'<a href="\2">\1</a>', text)
 
     def process_bold(self, text: str) -> str:
         """Convert markdown bold to HTML"""
-        # **text** -> <strong>text</strong>
         return re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
 
     def process_italic(self, text: str) -> str:
         """Convert markdown italic to HTML"""
-        # _text_ -> <em>text</em>
         return re.sub(r"_([^_]+)_", r"<em>\1</em>", text)
 
     def process_text(self, text: str) -> str:
@@ -194,15 +208,10 @@ class HTMLGenerator:
     def parse_experience_entry(self, entry: str) -> Dict:
         """Parse a single experience entry"""
         lines = [line.strip() for line in entry.strip().split("\n") if line.strip()]
-
-        # First line should be company | role
         if not lines:
             return {}
-
         header_line = lines[0]
         date_line = lines[1] if len(lines) > 1 and lines[1].startswith("_") else ""
-
-        # Extract company and role
         if " | " in header_line:
             parts = header_line.split(" | ", 1)
             company = parts[0].replace("###", "").strip()
@@ -210,53 +219,42 @@ class HTMLGenerator:
         else:
             company = header_line.replace("###", "").strip()
             role = ""
-
-        # Extract date
         date = date_line.replace("_", "").strip() if date_line else ""
-
-        # Extract bullet points
         bullets = []
         for line in lines[2:] if date_line else lines[1:]:
             if line.startswith("- "):
                 bullets.append(line[2:].strip())
-
         return {"company": company, "role": role, "date": date, "bullets": bullets}
 
     def parse_technical_expertise(self, content: str) -> List[Tuple[str, str]]:
-        """Parse technical expertise section"""
+        """Parse technical expertise section with a standard regex."""
         skills = []
         lines = content.strip().split("\n")
-
         for line in lines:
-            if ":" in line and "**" in line:
-                # **Category:** skills
-                parts = line.split(":", 1)
-                category = parts[0].replace("**", "").strip()
-                skill_list = parts[1].strip()
+            line = line.strip()  # Ensure line is stripped before regex
+            match = re.match(r"^\*\*(.+?):\*\*\s*(.*)$", line)
+            if match:
+                category = match.group(1).strip()
+                skill_list = match.group(2).strip()
                 skills.append((category, skill_list))
-
         return skills
 
     def parse_education(self, content: str) -> List[Dict]:
         """Parse education section"""
         education = []
         lines = content.strip().split("\n")
-
         for line in lines:
             if "**" in line and "-" in line:
-                # **Degree** - School (years)
                 parts = line.split(" - ", 1)
                 degree = parts[0].replace("**", "").strip()
                 school_info = parts[1].strip() if len(parts) > 1 else ""
                 education.append({"degree": degree, "school": school_info})
-
         return education
 
     def generate_header(self, header_info: Dict) -> str:
         html = ""
         if "name" in header_info:
             html += f"<h1>{header_info['name']}</h1>"
-        # Render title and specialization if both are present
         if "title" in header_info and "specialization" in header_info:
             html += f'<div class="subtitle"><strong>{self.process_text(header_info["title"])}</strong> | {self.process_text(header_info["specialization"])}</div>'
         elif "title" in header_info:
@@ -268,11 +266,23 @@ class HTMLGenerator:
             html += f'<div class="contact-info">{" | ".join(contact_lines)}</div>'
         return html
 
-    def generate_summary(self, content: str) -> str:
+    def generate_generic_paragraph_section(self, title: str, content: str) -> str:
+        """Generates an HTML section with a title and a paragraph."""
         return f"""
-        <h2>Summary</h2>
+        <h2>{title}</h2>
         <p style=\"margin: 5px 0; text-align: justify;\">{self.process_text(content)}</p>
         """
+
+    def generate_generic_bullet_list_section(self, title: str, content: str) -> str:
+        """Generates an HTML section with a title and a bullet list."""
+        html_content = f"<h2>{title}</h2><ul>"
+        lines = content.strip().split("\n")
+        for line in lines:
+            processed_line = self.process_text(line.lstrip("- ").strip())
+            if processed_line:
+                html_content += f"<li>{processed_line}</li>"
+        html_content += "</ul>"
+        return html_content
 
     def generate_experience(self, content: str) -> str:
         html = "<h2>Experience</h2>"
@@ -283,12 +293,14 @@ class HTMLGenerator:
             if not job_data:
                 continue
             html += '<div class="job-title">'
-            html += f'<span><span class="company-name">{job_data["company"]}</span>'
+            html += f'<span><span class="company-name">{self.process_text(job_data["company"])}</span>'
             if job_data["role"]:
-                html += f" | {job_data['role']}"
+                html += f" | {self.process_text(job_data['role'])}"
             html += "</span>"
             if job_data["date"]:
-                html += f'<span class="dates">{job_data["date"]}</span>'
+                html += (
+                    f'<span class="dates">{self.process_text(job_data["date"])}</span>'
+                )
             html += "</div>"
             if job_data["bullets"]:
                 html += "<ul>"
@@ -299,19 +311,9 @@ class HTMLGenerator:
 
     def generate_technical_expertise(self, content: str) -> str:
         skills = self.parse_technical_expertise(content)
-        html = ""
-        html += "<h2>Technical Expertise</h2>"
+        html = "<h2>Technical Expertise</h2>"
         for category, skill_list in skills:
-            html += f'<div class="tech-skills"><strong>{category}:</strong> {self.process_text(skill_list)}</div>'
-        return html
-
-    def generate_achievements(self, content: str) -> str:
-        html = "<h2>Notable Achievements</h2><ul>"
-        lines = content.strip().split("\n")
-        for line in lines:
-            if line.startswith("- "):
-                html += f"<li>{self.process_text(line[2:].strip())}</li>"
-        html += "</ul>"
+            html += f'<div class="tech-skills"><strong>{self.process_text(category)}:</strong> {self.process_text(skill_list)}</div>'
         return html
 
     def generate_education(self, content: str) -> str:
@@ -319,14 +321,11 @@ class HTMLGenerator:
         html = "<h2>Education</h2>"
         for item in education_items:
             html += '<div class="education-item">'
-            html += f"<strong>{item['degree']}</strong>"
+            html += f"<strong>{self.process_text(item['degree'])}</strong>"
             if item["school"]:
-                html += f" - {item['school']}"
+                html += f" - {self.process_text(item['school'])}"
             html += "</div>"
         return html
-
-    def generate_languages(self, content: str) -> str:
-        return f'<h2>Languages</h2><p style="margin: 5px 0;">{self.process_text(content.strip())}</p>'
 
     def generate_html(self, parsed_data: Dict) -> str:
         header_info = parsed_data["header"]
@@ -342,15 +341,21 @@ class HTMLGenerator:
 <body>
 """
         html += self.generate_header(header_info)
-        section_generators = {
-            "Summary": self.generate_summary,
+        section_renderers = {
+            "Summary": lambda content: self.generate_generic_paragraph_section(
+                "Summary", content
+            ),
             "Experience": self.generate_experience,
             "Technical Expertise": self.generate_technical_expertise,
-            "Notable Achievements": self.generate_achievements,
+            "Notable Achievements": lambda content: self.generate_generic_bullet_list_section(
+                "Notable Achievements", content
+            ),
             "Education": self.generate_education,
-            "Languages": self.generate_languages,
+            "Languages": lambda content: self.generate_generic_paragraph_section(
+                "Languages", content
+            ),
         }
-        for section_name, generator in section_generators.items():
+        for section_name, generator in section_renderers.items():
             if section_name in sections:
                 html += generator(sections[section_name])
         html += '<div class="no-print"><strong>📄 To save as PDF:</strong> Press Ctrl+P (or Cmd+P on Mac) and select "Save as PDF"</div>'
