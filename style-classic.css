@@ -1,0 +1,121 @@
+body {
+    font-family: 'Georgia', 'Times New Roman', Times, serif;
+    color: #222;
+    background: #fff;
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 0.75in;
+    font-size: 12pt;
+    line-height: 1.7;
+}
+
+.header-section {
+    border-bottom: 2px solid #222;
+    margin-bottom: 1.5em;
+    padding-bottom: 0.5em;
+    background: none;
+}
+
+h1 {
+    font-size: 28pt;
+    font-weight: bold;
+    margin: 0 0 0.2em 0;
+    letter-spacing: 0;
+    color: #111;
+    font-family: 'Georgia', serif;
+}
+
+.subtitle {
+    font-size: 14pt;
+    color: #444;
+    font-style: italic;
+    margin-bottom: 0.5em;
+}
+
+.contact-info {
+    font-size: 11pt;
+    color: #333;
+    margin-bottom: 0.5em;
+}
+
+h2 {
+    font-size: 15pt;
+    font-weight: bold;
+    color: #111;
+    border-bottom: 1px solid #bbb;
+    margin: 1.5em 0 0.5em 0;
+    padding-bottom: 0.1em;
+    letter-spacing: 0;
+}
+
+h3 {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #222;
+    margin: 1em 0 0.2em 0;
+}
+
+ul {
+    margin: 0.5em 0 1em 1.5em;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 0.3em;
+    color: #222;
+    text-align: left;
+}
+
+strong {
+    font-weight: bold;
+    color: #111;
+}
+
+em {
+    font-style: italic;
+    color: #444;
+}
+
+.list-item-container-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.2em;
+    border-bottom: none;
+    padding: 0.2em 0;
+}
+
+.item-name {
+    font-weight: bold;
+    color: #111;
+    font-size: 12pt;
+}
+
+.item-meta {
+    font-style: italic;
+    color: #666;
+    font-size: 10pt;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.aligned-list-item {
+    margin-bottom: 0.2em;
+    padding: 0.2em 0;
+    border-bottom: none;
+}
+
+.aligned-list-item strong {
+    width: 120px;
+    font-size: 11pt;
+}
+
+.simple-list-item {
+    margin-bottom: 0.2em;
+    padding: 0.2em 0;
+    border-bottom: none;
+}
+
+.no-print {
+    display: none;
+}

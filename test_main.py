@@ -180,6 +180,31 @@ jane.doe@email.com
             "paragraph",
         )
 
+    def test_vimes_header_parsing(self):
+        markdown_content = """# Samuel Vimes
+**His Grace, The Duke of Ankh, Commander of the Ankh-Morpork City Watch**
+Ankh-Morpork, The Discworld | Often Found at The Sign of the Genuinely Surprised Man (Duty Calls) | [Cable Street Particulars](https://wiki.lspace.org/Cable_Street_Particulars)
+
+## Summary
+This is a summary.
+"""
+        parsed_data = self.parser.parse_markdown(markdown_content)
+        self.assertEqual(parsed_data["header"]["name"], "Samuel Vimes")
+        self.assertEqual(
+            parsed_data["header"]["title"],
+            "His Grace, The Duke of Ankh, Commander of the Ankh-Morpork City Watch",
+        )
+        self.assertNotIn(
+            "specialization", parsed_data["header"]
+        )  # Vimes' title is complex but not split by ' | ' into title/spec in the **bolded** part
+        self.assertIn("contact", parsed_data["header"])
+        self.assertEqual(len(parsed_data["header"]["contact"]), 1)
+        self.assertEqual(
+            parsed_data["header"]["contact"][0],
+            "Ankh-Morpork, The Discworld | Often Found at The Sign of the Genuinely Surprised Man (Duty Calls) | [Cable Street Particulars](https://wiki.lspace.org/Cable_Street_Particulars)",
+        )
+        self.assertTrue(any(s["title"] == "Summary" for s in parsed_data["sections"]))
+
 
 class TestHTMLGenerator(unittest.TestCase):
     def setUp(self):
@@ -191,10 +216,29 @@ class TestHTMLGenerator(unittest.TestCase):
         expected = '<strong>Bold</strong> <em>Italic</em> <a href="http://example.com">Link</a>'
         self.assertEqual(self.generator.process_text(text), expected)
 
-    def test_process_links(self):
-        text = "[Example Link](http://example.com)"
-        expected = '<a href="http://example.com">Example Link</a>'
-        self.assertEqual(self.generator.process_links(text), expected)
+    def test_process_text_with_complex_links(self):
+        """Test processing of links with markdown in text and special chars in URL."""
+        # Case 1: Underscores in URL, no markdown in link text
+        text1 = "[Link to section](http://example.com/foo_bar/doc_v1.html)"
+        expected1 = (
+            '<a href="http://example.com/foo_bar/doc_v1.html">Link to section</a>'
+        )
+        self.assertEqual(self.generator.process_text(text1), expected1)
+
+        # Case 2: Markdown in link text, clean URL
+        text2 = "[Link with **bold** and _italic_ text](http://example.com/page)"
+        expected2 = '<a href="http://example.com/page">Link with <strong>bold</strong> and <em>italic</em> text</a>'
+        self.assertEqual(self.generator.process_text(text2), expected2)
+
+        # Case 3: Markdown in link text, underscores in URL
+        text3 = "[**Important** _document_ here](http://example.com/archive/important_doc_version_2.pdf)"
+        expected3 = '<a href="http://example.com/archive/important_doc_version_2.pdf"><strong>Important</strong> <em>document</em> here</a>'
+        self.assertEqual(self.generator.process_text(text3), expected3)
+
+        # Case 4: Text surrounding a complex link
+        text4 = "Please see: [**Detail _A_**](http://example.com/details_a) and also [Detail B](http://example.com/details_b)."
+        expected4 = 'Please see: <a href="http://example.com/details_a"><strong>Detail <em>A</em></strong></a> and also <a href="http://example.com/details_b">Detail B</a>.'
+        self.assertEqual(self.generator.process_text(text4), expected4)
 
     def test_process_bold(self):
         text = "**Bold Text**"
@@ -255,7 +299,7 @@ _Jan 2020 - Dec 2022_
         )
         self.assertIn("<h2>Test Section</h2>", html)
         self.assertIn(
-            """<p style="margin: 5px 0; text-align: justify;">This is <em>italic</em> text.</p>""",
+            """<p class="paragraph-content">This is <em>italic</em> text.</p>""",
             html,
         )
         html_empty = self.generator.generate_generic_paragraph_section(
@@ -287,9 +331,9 @@ _2022 - Present_
             "Past Work", content
         )  # Title is now an arg
         self.assertIn("<h2>Past Work</h2>", html)
-        self.assertIn('<span class="company-name">Alpha Inc.</span>', html)
+        self.assertIn('<span class="item-name">Alpha Inc.</span>', html)
         self.assertIn("Lead Engineer", html)
-        self.assertIn('<span class="dates">2022 - Present</span>', html)
+        self.assertIn('<span class="item-meta">2022 - Present</span>', html)
         self.assertIn("<li>Feature <strong>one</strong>.</li>", html)
         self.assertIn("<li>Feature <em>two</em>.</li>", html)
 
@@ -302,7 +346,7 @@ _2022 - Present_
         )  # Title is now an arg
         self.assertIn("<h2>Tech Stack</h2>", html)
         self.assertIn(
-            """<div class="tech-skills"><strong>Core:</strong> <em>Go</em>, Python</div>""",
+            """<div class="aligned-list-item"><strong>Core:</strong> <em>Go</em>, Python</div>""",
             html,
         )
 
@@ -314,8 +358,14 @@ _2022 - Present_
             "Academia", content
         )  # Title is now an arg
         self.assertIn("<h2>Academia</h2>", html)
-        self.assertIn("<strong>PhD</strong> - <em>Wonderland Uni</em>", html)
-        self.assertIn("<strong>MSc</strong> - Another Place", html)
+        self.assertIn(
+            '<div class="simple-list-item"><strong class="item-name">PhD</strong> - <em>Wonderland Uni</em></div>',
+            html,
+        )
+        self.assertIn(
+            '<div class="simple-list-item"><strong class="item-name">MSc</strong> - Another Place</div>',
+            html,
+        )
 
     def test_generate_html_integration_with_typed_sections(self):
         parsed_data = {
@@ -357,11 +407,14 @@ _2022 - Present_
         self.assertIn("<h1>Test User</h1>", html)
         self.assertIn("""<div class="subtitle"><strong>Tester</strong></div>""", html)
         self.assertIn("test@example.com", html)
+        self.assertIn(
+            '<link rel="stylesheet" href="style.css">', html
+        )  # Check for CSS link
 
         # Overview (paragraph)
         self.assertIn("<h2>Overview</h2>", html)
         self.assertIn(
-            """<p style="margin: 5px 0; text-align: justify;">This is a <em>summary</em>.</p>""",
+            """<p class="paragraph-content">This is a <em>summary</em>.</p>""",
             html,
         )
         # Achievements (bullet_list)
@@ -372,34 +425,25 @@ _2022 - Present_
         # Toolset (aligned_list)
         self.assertIn("<h2>Toolset</h2>", html)
         self.assertIn(
-            """<div class="tech-skills"><strong>Software:</strong> Editor, Compiler</div>""",
+            """<div class="aligned-list-item"><strong>Software:</strong> Editor, Compiler</div>""",
             html,
         )
 
         # Work History (timeline)
         self.assertIn("<h2>Work History</h2>", html)
-        self.assertIn('<span class="company-name">Big Corp</span>', html)
+        self.assertIn('<span class="item-name">Big Corp</span>', html)
         self.assertIn("<li>Wrote code.</li>", html)
 
         # Education (special handling by title "Education", content fits its parser)
         self.assertIn("<h2>Education</h2>", html)
-        self.assertIn("<strong>BSc.</strong> - Good School", html)
-        self.assertNotIn("Some notes about school.", html)
-        # The current parse_education only takes degree and school.
-        # Let's refine test or parser for education notes.
-        # The `generate_education` only uses item['degree'] and item['school'].
-        # The current `test_parse_education` is correct for what `parse_education` does.
-        # So, "Some notes about school." *will not* be rendered by current `generate_education`.
-        # This needs to be addressed if we want notes in education.
-        # For now, the test should reflect current behavior.
-        # Re-evaluating `generate_education` and `parse_education`
-        # `parse_education` returns a list of dicts: `[{'degree': degree, 'school': school_info}]`
-        # `generate_education` iterates this and prints `<strong>{degree}</strong> - {school}`.
-        # If the _content_ "Some notes about school." is not part of `school_info` (it's on a new line), it won't be parsed into `school_info` by the current `split(' - ', 1)`.
-        # Thus, it won't be rendered by `generate_education`.
-        # This is a limitation of the current `parse_education`.
-        # The test should be:
-        self.assertIn("<strong>BSc.</strong> - Good School", html)
+        # The parse_education and generate_education methods are quite specific.
+        # It expects "**Degree** - School" format primarily.
+        # The "Some notes about school." part from the test data for this section was on a new line
+        # and would not be parsed as part of the school by parse_education, so it won't be rendered.
+        self.assertIn(
+            '<div class="simple-list-item"><strong class="item-name">BSc.</strong> - Good School</div>',
+            html,
+        )
         self.assertNotIn(
             "Some notes about school.", html
         )  # Based on current parse_education logic
