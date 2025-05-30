@@ -13,85 +13,158 @@ from typing import Dict, List, Tuple
 
 class ResumeParser:
     def __init__(self):
-        self.sections = {}
+        self.sections_list = []  # Changed from dict to list
         self.header_info = {}
 
+    def _determine_section_type(self, content_lines: List[str]) -> str:
+        """Determines the type of a section based on its content lines."""
+        if not content_lines:
+            return "paragraph"
+
+        # Check for Timeline (e.g., Experience, Education with detailed entries)
+        # Looks for "### Company | Role" and optionally "_Date_"
+        # For a timeline, we expect at least one line to start with "### "
+        if any(line.strip().startswith("### ") for line in content_lines):
+            return "timeline"
+
+        # Check for Aligned List (e.g., Technical Expertise)
+        # Looks for "**Category:** Skills"
+        aligned_list_pattern = r"^\*\*(.+?):\*\*\s*(.*)$"
+        if any(re.match(aligned_list_pattern, line.strip()) for line in content_lines):
+            return "aligned_list"
+
+        # Check for Bullet List (e.g., Notable Achievements, simple lists under custom sections)
+        # Considers it a bullet list if a significant portion of non-empty lines are bullet points.
+        bullet_lines = 0
+        non_empty_lines = 0
+        for line_content in content_lines:
+            line = line_content.strip()
+            if line:
+                non_empty_lines += 1
+                if line.startswith("- "):
+                    bullet_lines += 1
+
+        if non_empty_lines > 0 and (bullet_lines / non_empty_lines) >= 0.5:
+            # If more than half of the non-empty lines start with a bullet
+            return "bullet_list"
+
+        # Default to Paragraph (e.g., Summary, Languages, or any other text block)
+        return "paragraph"
+
     def parse_markdown(self, content: str) -> Dict:
-        """Parse markdown content and extract resume sections"""
+        """Parse markdown content and extract resume sections with their types"""
         lines = content.strip().split("\n")
-        current_section = None
-        current_content = []
+        current_section_title = None
+        current_content_lines = []
+        self.header_info = {}  # Reset for multiple calls if any
+        self.sections_list = []  # Reset for multiple calls
 
-        for line in lines:
-            line = line.strip()
+        for line_text in lines:
+            original_line_stripped = line_text.strip()  # For conditions
+            # Keep original line_text for content, but strip for logic
 
-            if not line:  # Skip empty lines
-                if current_content and current_content[-1] != "":
-                    current_content.append("")
+            if not original_line_stripped:  # Empty line
+                if current_content_lines and current_content_lines[-1] != "":
+                    current_content_lines.append(
+                        ""
+                    )  # Preserve empty lines within section content
                 continue
 
-            if line.startswith("# "):  # Header (name)
-                self.header_info["name"] = line[2:].strip()
+            # 1. Name (must be the first major header element)
+            if original_line_stripped.startswith("# ") and not self.header_info.get(
+                "name"
+            ):
+                if (
+                    current_section_title
+                ):  # Finalize previous section if # Name appears unexpectedly
+                    section_type = self._determine_section_type(current_content_lines)
+                    self.sections_list.append(
+                        {
+                            "title": current_section_title,
+                            "type": section_type,
+                            "content": "\n".join(current_content_lines).strip(),
+                        }
+                    )
+                self.header_info["name"] = original_line_stripped[2:].strip()
+                current_section_title = None  # Reset section context
+                current_content_lines = []  # and content buffer
                 continue
 
-            # Try: **Title** | Specialization (specialization can be empty or non-existent)
-            title_spec_match = re.match(r"^\*\*([^*]+)\*\*(?:\s*\|\s*(.*))?$", line)
-            if title_spec_match:
+            # 2. Title/Specialization (must be after name, before sections)
+            title_spec_match = re.match(
+                r"^\*\*([^*]+)\*\*(?:\s*\|\s*(.*))?$", original_line_stripped
+            )
+            if (
+                self.header_info.get("name")
+                and not self.header_info.get("title")
+                and title_spec_match
+            ):
                 self.header_info["title"] = title_spec_match.group(1).strip()
-                if title_spec_match.group(
-                    2
-                ):  # If specialization part was matched and is not None
+                if title_spec_match.group(2):
                     self.header_info["specialization"] = title_spec_match.group(
                         2
                     ).strip()
+                else:
+                    self.header_info.pop(
+                        "specialization", None
+                    )  # Ensure it's removed if not present
                 continue
 
-            # Fallback for lines that are just bold (e.g. **Title Only**), no pipe involved.
-            # This should come AFTER the more specific title|spec match.
-            # This regex ensures the entire line is just bold content.
-            # title_only_match = re.match(r"^\*\*([^*]+(?:\s*\|\s*[^*]+)*)\*\*$", line)
-            # Simpler: if it's fully bold and wasn't title|spec, it's a title.
-            if (
-                line.startswith("**")
-                and line.endswith("**")
-                and "title" not in self.header_info
-            ):
-                # And it wasn't already captured by the more specific regex above
-                # This check is a bit weak, relies on title not being set yet
-                # A better way is to ensure the previous regex did not match, or make this one more specific.
-                # For now, let's ensure it doesn't overwrite a title from title_spec_match
-                temp_title = line[2:-2].strip()
-                if (
-                    "|" not in temp_title
-                ):  # if it's simple like **My Title**, not **A | B** (already handled)
-                    self.header_info["title"] = temp_title
-                    continue
+            # Redundant title parsing block removed here.
+            # The regex above handles both '**Title**' and '**Title** | Specialization'.
 
-            # Contact info
-            if any(
-                pattern in line.lower()
-                for pattern in ["ca |", "redwood city", "+1 (", "@", "linkedin"]
+            # 3. Section Start (##)
+            # This must be checked before general contact line parsing.
+            if original_line_stripped.startswith("## "):
+                if current_section_title:  # Finalize previous section
+                    section_type = self._determine_section_type(current_content_lines)
+                    self.sections_list.append(
+                        {
+                            "title": current_section_title,
+                            "type": section_type,
+                            "content": "\n".join(current_content_lines).strip(),
+                        }
+                    )
+                current_section_title = original_line_stripped[3:].strip()
+                current_content_lines = []
+                continue
+
+            # 4. Contact Lines (NEW GENERAL LOGIC)
+            # These are lines after Name & Title/Spec, but before the first "## section".
+            # `current_section_title` should be `None` at this stage if we are in the header.
+            # `self.header_info.get("name")` ensures we've at least seen the name.
+            # `self.header_info.get("title")` ensures we've seen the title.
+            if (
+                self.header_info.get("name")
+                and self.header_info.get(
+                    "title"
+                )  # Ensures title is parsed before contacts
+                and current_section_title is None
+                and original_line_stripped  # Line is not empty
             ):
                 if "contact" not in self.header_info:
                     self.header_info["contact"] = []
-                self.header_info["contact"].append(line)
+                self.header_info["contact"].append(original_line_stripped)
                 continue
 
-            # Section headers
-            if line.startswith("## "):
-                if current_section and current_content:
-                    self.sections[current_section] = "\n".join(current_content).strip()
-                current_section = line[3:].strip()
-                current_content = []
-                continue
+            # 5. Accumulate Section Content
+            if current_section_title is not None:  # Content for an active section
+                current_content_lines.append(line_text)  # Append the original line_text
+            # elif not self.header_info.get("name"):
+            # Lines before # Name (if any, and not empty) are currently ignored by this logic.
+            # This is generally fine as a resume should start with # Name or be structured.
 
-            if current_section:  # Add content to current section
-                current_content.append(line)
+        if current_section_title and current_content_lines:  # Add the last section
+            section_type = self._determine_section_type(current_content_lines)
+            self.sections_list.append(
+                {
+                    "title": current_section_title,
+                    "type": section_type,
+                    "content": "\n".join(current_content_lines).strip(),
+                }
+            )
 
-        if current_section and current_content:  # Add the last section
-            self.sections[current_section] = "\n".join(current_content).strip()
-
-        return {"header": self.header_info, "sections": self.sections}
+        return {"header": self.header_info, "sections": self.sections_list}
 
 
 class HTMLGenerator:
@@ -268,9 +341,13 @@ class HTMLGenerator:
 
     def generate_generic_paragraph_section(self, title: str, content: str) -> str:
         """Generates an HTML section with a title and a paragraph."""
+        # Ensure content is not empty or just whitespace before adding p tags
+        processed_content = self.process_text(content)
+        if not processed_content.strip():
+            return f"<h2>{title}</h2>"  # Return title only if content is empty
         return f"""
         <h2>{title}</h2>
-        <p style=\"margin: 5px 0; text-align: justify;\">{self.process_text(content)}</p>
+        <p style="margin: 5px 0; text-align: justify;">{processed_content}</p>
         """
 
     def generate_generic_bullet_list_section(self, title: str, content: str) -> str:
@@ -284,8 +361,8 @@ class HTMLGenerator:
         html_content += "</ul>"
         return html_content
 
-    def generate_experience(self, content: str) -> str:
-        html = "<h2>Experience</h2>"
+    def generate_experience(self, title: str, content: str) -> str:
+        html = f"<h2>{title}</h2>"
         entries = content.split("###")
         entries = [entry.strip() for entry in entries if entry.strip()]
         for entry in entries:
@@ -309,16 +386,16 @@ class HTMLGenerator:
                 html += "</ul>"
         return html
 
-    def generate_technical_expertise(self, content: str) -> str:
+    def generate_technical_expertise(self, title: str, content: str) -> str:
         skills = self.parse_technical_expertise(content)
-        html = "<h2>Technical Expertise</h2>"
+        html = f"<h2>{title}</h2>"
         for category, skill_list in skills:
             html += f'<div class="tech-skills"><strong>{self.process_text(category)}:</strong> {self.process_text(skill_list)}</div>'
         return html
 
-    def generate_education(self, content: str) -> str:
+    def generate_education(self, title: str, content: str) -> str:
         education_items = self.parse_education(content)
-        html = "<h2>Education</h2>"
+        html = f"<h2>{title}</h2>"
         for item in education_items:
             html += '<div class="education-item">'
             html += f"<strong>{self.process_text(item['degree'])}</strong>"
@@ -329,35 +406,65 @@ class HTMLGenerator:
 
     def generate_html(self, parsed_data: Dict) -> str:
         header_info = parsed_data["header"]
-        sections = parsed_data["sections"]
+        sections = parsed_data["sections"]  # This is now a list of dicts
         html = f"""<!DOCTYPE html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{header_info.get("name", "Resume")}</title>
     <style>{self.css}</style>
 </head>
 <body>
 """
         html += self.generate_header(header_info)
-        section_renderers = {
-            "Summary": lambda content: self.generate_generic_paragraph_section(
-                "Summary", content
-            ),
-            "Experience": self.generate_experience,
-            "Technical Expertise": self.generate_technical_expertise,
-            "Notable Achievements": lambda content: self.generate_generic_bullet_list_section(
-                "Notable Achievements", content
-            ),
-            "Education": self.generate_education,
-            "Languages": lambda content: self.generate_generic_paragraph_section(
-                "Languages", content
-            ),
+
+        # Map section types to generator methods
+        # The generator methods will now take (title, content)
+        section_type_renderers = {
+            "timeline": self.generate_experience,  # Re-using generate_experience for timeline
+            "aligned_list": self.generate_technical_expertise,  # Re-using for aligned lists
+            "bullet_list": self.generate_generic_bullet_list_section,
+            "paragraph": self.generate_generic_paragraph_section,
+            # Education might need its own type if its structure is distinct enough from generic timeline
+            # For now, if education is also "### Degree...\n_Date_...", it could be 'timeline'
+            # If education is "**Degree** - School", it could be 'aligned_list' or 'paragraph'
+            # Let's assume for now education can be a timeline type if structured like experience.
+            # Or a bullet_list or paragraph depending on content.
+            # The _determine_section_type needs to be robust.
         }
-        for section_name, generator in section_renderers.items():
-            if section_name in sections:
-                html += generator(sections[section_name])
+
+        # Special handling for 'Education' if its structure isn't strictly timeline or aligned_list based on current parsers
+        # The `parse_education` method expects a certain format.
+        # If we make `generate_education` take (title, content), it can be used for type 'education' if we add that type.
+
+        # For now, let's adjust generate_experience to be more generic for timelines.
+        # And generate_technical_expertise for aligned lists.
+        # The _determine_section_type will be key.
+
+        for section_data in sections:
+            section_title = section_data["title"]
+            section_type = section_data["type"]
+            section_content = section_data["content"]
+
+            if section_title == "Education" and self.parse_education(
+                section_content
+            ):  # Specific handler for Education
+                html += self.generate_education(section_title, section_content)
+            elif section_type in section_type_renderers:
+                html += section_type_renderers[section_type](
+                    section_title, section_content
+                )
+            else:
+                # Fallback for unknown types, treat as paragraph
+                print(
+                    f"Warning: Unknown section type '{section_type}' for title '{section_title}'. Treating as paragraph.",
+                    file=sys.stderr,
+                )
+                html += self.generate_generic_paragraph_section(
+                    section_title, section_content
+                )
+
         html += '<div class="no-print"><strong>📄 To save as PDF:</strong> Press Ctrl+P (or Cmd+P on Mac) and select "Save as PDF"</div>'
         html += "</body></html>"
         return html
