@@ -1,25 +1,47 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @media print {
-    body {
-        margin: 0;
+
+    .header-section::after,
+    h2::after {
+        height: 1px;
+    }
+
+    body,
+    .header-section,
+    .content-wrapper {
         background: white !important;
-    }
-
-    .no-print {
-        display: none;
-    }
-
-    /* Ensure colors print well */
-    h1,
-    h2 {
         color: #1a1a1a !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     .header-gradient {
-        background: white !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    a,
+    a:visited {
+        color: #1a0dab !important;
+        text-decoration: underline !important;
+    }
+
+    /* Remove box shadows, transitions, and other non-print-friendly effects */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transition: none !important;
+    }
+
+    /* Ensure colors print well for headings */
+    h1,
+    h2 {
+        color: #1a1a1a !important;
     }
 }
 
@@ -54,6 +76,17 @@ body {
     width: calc(100% - 1in);
     height: 3px;
     background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+    border-radius: 2px;
+}
+
+h2::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 2px;
 }
 
@@ -111,17 +144,6 @@ h2 {
     margin: 28px 0 16px 0;
     position: relative;
     letter-spacing: -0.01em;
-}
-
-h2::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 0;
-    width: 40px;
-    height: 3px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 2px;
 }
 
 /* First section title has no top margin */
