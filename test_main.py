@@ -104,14 +104,12 @@ jane.doe@email.com
         self.assertIn("jane.doe@email.com", parsed_data["header"]["contact"])
 
     def test_section_type_determination(self):
-        # Timeline
         timeline_content = "### Job 1 | Dev\n_Date_\n- Did stuff"
         self.assertEqual(
             self.parser._determine_section_type(timeline_content.split("\n")),
             "timeline",
         )
 
-        # Aligned List
         aligned_content_majority = "**Tech:** Go, Python\n**Tools:** Docker, K8s"
         self.assertEqual(
             self.parser._determine_section_type(aligned_content_majority.split("\n")),
@@ -122,7 +120,7 @@ jane.doe@email.com
         )
         self.assertEqual(
             self.parser._determine_section_type(aligned_content_minority.split("\n")),
-            "paragraph",  # Not majority
+            "paragraph",
         )
         aligned_content_single_good = "**Tech:** Go, Python"
         self.assertEqual(
@@ -132,19 +130,18 @@ jane.doe@email.com
             "aligned_list",
         )
 
-        # Description List
         desc_list_clear = "**Degree 1** - School A\n**Degree 2** - School B"
         self.assertEqual(
             self.parser._determine_section_type(desc_list_clear.split("\n")),
             "description_list",
         )
-        desc_list_mixed_majority = "**Degree 1** - School A\nSome other note\n**Degree 2** - School B\n**Degree 3** - School C"  # 3/4 match
+        desc_list_mixed_majority = "**Degree 1** - School A\nSome other note\n**Degree 2** - School B\n**Degree 3** - School C"
         self.assertEqual(
             self.parser._determine_section_type(desc_list_mixed_majority.split("\n")),
             "description_list",
         )
         desc_list_mixed_minority = (
-            "**Degree 1** - School A\nSome other note\nAnother note also"  # 1/3 match
+            "**Degree 1** - School A\nSome other note\nAnother note also"
         )
         self.assertEqual(
             self.parser._determine_section_type(desc_list_mixed_minority.split("\n")),
@@ -156,38 +153,34 @@ jane.doe@email.com
             "description_list",
         )
 
-        # Bullet List
         bullet_content = "- Item 1\n- Item 2\n  - Sub Item"
         self.assertEqual(
             self.parser._determine_section_type(bullet_content.split("\n")),
             "bullet_list",
         )
         bullet_content_mixed = (
-            "Some intro text\n- Item 1\n- Item 2"  # still bullet if majority
+            "Some intro text\n- Item 1\n- Item 2"
         )
         self.assertEqual(
             self.parser._determine_section_type(bullet_content_mixed.split("\n")),
             "bullet_list",
         )
 
-        # Single line paragraph (not matching other types)
         single_line_paragraph = "Just one line of text."
         self.assertEqual(
             self.parser._determine_section_type([single_line_paragraph]), "paragraph"
         )
 
-        # Empty content
         self.assertEqual(
             self.parser._determine_section_type([]), "paragraph"
-        )  # Default for empty
+        )
 
-        # Test with wojtek.md sections for robustness
-        wojtek_summary = "Technical leader with 12+ years..."  # (paragraph)
+        wojtek_summary = "Technical leader with 12+ years..."
         self.assertEqual(
             self.parser._determine_section_type(wojtek_summary.split("\n")), "paragraph"
         )
 
-        wojtek_experience_first_entry = "### Knowbase One | CTO & Co-Founder\n_January 2025 - Present_\n- Designed multi-modal AI platform"  # (timeline)
+        wojtek_experience_first_entry = "### Knowbase One | CTO & Co-Founder\n_January 2025 - Present_\n- Designed multi-modal AI platform"
         self.assertEqual(
             self.parser._determine_section_type(
                 wojtek_experience_first_entry.split("\n")
@@ -195,13 +188,13 @@ jane.doe@email.com
             "timeline",
         )
 
-        wojtek_tech_expertise = "**AI/ML Systems:** Agentic architectures, RAG, Vector databases, Multi-modal AI, LLM tool design\n**Languages:** Go (Expert), Python (Expert), Clojure"  # (aligned_list)
+        wojtek_tech_expertise = "**AI/ML Systems:** Agentic architectures, RAG, Vector databases, Multi-modal AI, LLM tool design\n**Languages:** Go (Expert), Python (Expert), Clojure"
         self.assertEqual(
             self.parser._determine_section_type(wojtek_tech_expertise.split("\n")),
             "aligned_list",
         )
 
-        wojtek_achievements = '- Automated critical processes: certificate management (saving 2 FTE) and infrastructure remediation (<5 min response)\n- Speaker: ["Building Reliable Security Services"](https://www.youtube.com/watch?v=yaZSTVXrhMA&t=3s) - SRECon'  # (bullet_list)
+        wojtek_achievements = '- Automated critical processes: certificate management (saving 2 FTE) and infrastructure remediation (<5 min response)\n- Speaker: ["Building Reliable Security Services"](https://www.youtube.com/watch?v=yaZSTVXrhMA&t=3s) - SRECon'
         self.assertEqual(
             self.parser._determine_section_type(wojtek_achievements.split("\n")),
             "bullet_list",
@@ -210,7 +203,7 @@ jane.doe@email.com
         wojtek_education = "**M.S. Internet Engineering** - Wrocław University of Technology, Poland (2011-2013)\n**B.S. Computer Science** - Wrocław University of Technology, Poland (2007-2011)"
         self.assertEqual(
             self.parser._determine_section_type(wojtek_education.split("\n")),
-            "description_list",  # Changed from paragraph
+            "description_list",
         )
 
     def test_vimes_header_parsing(self):
@@ -229,7 +222,7 @@ This is a summary.
         )
         self.assertNotIn(
             "specialization", parsed_data["header"]
-        )  # Vimes' title is complex but not split by ' | ' into title/spec in the **bolded** part
+        )
         self.assertIn("contact", parsed_data["header"])
         self.assertEqual(len(parsed_data["header"]["contact"]), 1)
         self.assertEqual(
@@ -242,7 +235,7 @@ This is a summary.
 class TestHTMLGenerator(unittest.TestCase):
     def setUp(self):
         self.generator = HTMLGenerator()
-        self.maxDiff = None  # Show full diff on assertion failure
+        self.maxDiff = None
 
     def test_process_text(self):
         text = "**Bold** _Italic_ [Link](http://example.com)"
@@ -251,24 +244,20 @@ class TestHTMLGenerator(unittest.TestCase):
 
     def test_process_text_with_complex_links(self):
         """Test processing of links with markdown in text and special chars in URL."""
-        # Case 1: Underscores in URL, no markdown in link text
         text1 = "[Link to section](http://example.com/foo_bar/doc_v1.html)"
         expected1 = (
             '<a href="http://example.com/foo_bar/doc_v1.html">Link to section</a>'
         )
         self.assertEqual(self.generator.process_text(text1), expected1)
 
-        # Case 2: Markdown in link text, clean URL
         text2 = "[Link with **bold** and _italic_ text](http://example.com/page)"
         expected2 = '<a href="http://example.com/page">Link with <strong>bold</strong> and <em>italic</em> text</a>'
         self.assertEqual(self.generator.process_text(text2), expected2)
 
-        # Case 3: Markdown in link text, underscores in URL
         text3 = "[**Important** _document_ here](http://example.com/archive/important_doc_version_2.pdf)"
         expected3 = '<a href="http://example.com/archive/important_doc_version_2.pdf"><strong>Important</strong> <em>document</em> here</a>'
         self.assertEqual(self.generator.process_text(text3), expected3)
-
-        # Case 4: Text surrounding a complex link
+    
         text4 = "Please see: [**Detail _A_**](http://example.com/details_a) and also [Detail B](http://example.com/details_b)."
         expected4 = 'Please see: <a href="http://example.com/details_a"><strong>Detail <em>A</em></strong></a> and also <a href="http://example.com/details_b">Detail B</a>.'
         self.assertEqual(self.generator.process_text(text4), expected4)
@@ -346,14 +335,14 @@ _Jan 2020 - Dec 2022_
 
     def test_generate_experience_timeline_type(
         self,
-    ):  # Renamed to reflect it handles "timeline" type
+    ):
         content = """### Alpha Inc. | Lead Engineer
 _2022 - Present_
 - Feature **one**.
 - Feature _two_."""
         html = self.generator.generate_experience(
             "Past Work", content
-        )  # Title is now an arg
+        )
         self.assertIn("<h2>Past Work</h2>", html)
         self.assertIn('<span class="item-name">Alpha Inc.</span>', html)
         self.assertIn("Lead Engineer", html)
@@ -363,17 +352,17 @@ _2022 - Present_
 
     def test_generate_technical_expertise_aligned_list_type(
         self,
-    ):  # Renamed for "aligned_list"
+    ):  
         content = "**Core:** _Go_, Python\n**Tools:** Docker, **Kubernetes**"
         html = self.generator.generate_technical_expertise(
             "Tech Stack", content
-        )  # Title is now an arg
+        )
         self.assertIn("<h2>Tech Stack</h2>", html)
         self.assertIn(
             """<div class="aligned-list-item"><strong>Core:</strong> <em>Go</em>, Python</div>""",
             html,
         )
-        self.assertIn(  # Check for the second item too
+        self.assertIn(
             """<div class="aligned-list-item"><strong>Tools:</strong> Docker, <strong>Kubernetes</strong></div>""",
             html,
         )
@@ -399,7 +388,7 @@ Not a description list item.
         )
         self.assertNotIn(
             "Not a description list item.", html
-        )  # Non-matching lines are ignored by current implementation
+        )
 
     def test_generate_html_integration_with_typed_sections(self):
         parsed_data = {
@@ -429,7 +418,7 @@ Not a description list item.
                     "type": "timeline",
                     "content": "### Big Corp | Coder\n_Then - Now_\n- Wrote code.",
                 },
-                {  # This section will be rendered by generate_description_list_section
+                {
                     "title": "Qualifications",
                     "type": "description_list",
                     "content": "**Degree Alpha** - School One\n**Certificate Beta** - School Two\nThis line will be ignored.",
@@ -443,20 +432,17 @@ Not a description list item.
         self.assertIn("test@example.com", html)
         self.assertIn(
             '<link rel="stylesheet" href="style.css">', html
-        )  # Check for CSS link
+        )
 
-        # Overview (paragraph)
         self.assertIn("<h2>Overview</h2>", html)
         self.assertIn(
             """<p class="paragraph-content">This is a <em>summary</em>.</p>""",
             html,
         )
-        # Achievements (bullet_list)
         self.assertIn("<h2>Achievements</h2>", html)
         self.assertIn("<li>Achieved <strong>goal 1</strong></li>", html)
         self.assertIn("<li>Achieved goal 2</li>", html)
 
-        # Toolset (aligned_list)
         self.assertIn("<h2>Toolset</h2>", html)
         self.assertIn(
             """<div class="aligned-list-item"><strong>Software:</strong> Editor, Compiler</div>""",
@@ -467,12 +453,10 @@ Not a description list item.
             html,
         )
 
-        # Work History (timeline)
         self.assertIn("<h2>Work History</h2>", html)
         self.assertIn('<span class="item-name">Big Corp</span>', html)
         self.assertIn("<li>Wrote code.</li>", html)
 
-        # Qualifications (description_list)
         self.assertIn("<h2>Qualifications</h2>", html)
         self.assertIn(
             '<div class="simple-list-item"><strong class="item-name">Degree Alpha</strong> - School One</div>',
@@ -484,9 +468,8 @@ Not a description list item.
         )
         self.assertNotIn(
             "This line will be ignored.", html
-        )  # Check that non-matching lines are ignored
+        )
 
-        # Check for the PDF instruction div
         self.assertIn('<div class="no-print"><strong>📄 To save as PDF:</strong>', html)
 
 

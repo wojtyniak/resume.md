@@ -192,7 +192,6 @@ class HTMLGenerator:
 
             last_end = end
 
-        # Process any remaining text after the last link
         if last_end < len(text):
             output_parts.append(self._process_text_segment(text[last_end:]))
 
@@ -325,22 +324,19 @@ class HTMLGenerator:
                 term = self.process_text(match.group(1).strip())
                 description = self.process_text(match.group(2).strip())
 
-                html += '<div class="simple-list-item">'  # Using existing class for styling consistency
+                html += '<div class="simple-list-item">'
                 html += f'<strong class="item-name">{term}</strong>'
                 if (
                     description
-                ):  # Only add " - " and description if description is not empty
+                ):
                     html += f" - {description}"
                 html += "</div>"
-            # Optionally, handle lines that don\'t match the pattern, e.g., as simple paragraphs within the section
-            # For now, non-matching lines are ignored in this structured list.
         return html
 
     def generate_html(self, parsed_data: Dict) -> str:
         header_info = parsed_data["header"]
-        sections = parsed_data["sections"]  # This is now a list of dicts
+        sections = parsed_data["sections"]
 
-        # Embed CSS directly and also include a <link> tag for test compatibility
         css_content = ""
         css_link_tag = f'<link rel="stylesheet" href="{self.css_file_path}">\n'
         try:
@@ -352,7 +348,7 @@ class HTMLGenerator:
                 file=sys.stderr,
             )
             css_content = ""
-            css_link_tag = ""  # Don't include link if file doesn't exist
+            css_link_tag = ""
 
         html = f"""<!DOCTYPE html>
 <html lang=\"en\">
@@ -416,26 +412,21 @@ def main():
         print(f"Error: Input file '{input_path}' not found")
         sys.exit(1)
 
-    # Determine output file
     if args.output_file:
         output_path = Path(args.output_file)
     else:
         output_path = input_path.with_suffix(".html")
 
     try:
-        # Read markdown content
         with open(input_path, "r", encoding="utf-8") as f:
             markdown_content = f.read()
 
-        # Parse markdown
         resume_parser = ResumeParser()
         parsed_data = resume_parser.parse_markdown(markdown_content)
 
-        # Generate HTML
         html_generator = HTMLGenerator(css_file_path=args.style)
         html_content = html_generator.generate_html(parsed_data)
 
-        # Write HTML output
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
