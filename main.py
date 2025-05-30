@@ -339,13 +339,28 @@ class HTMLGenerator:
     def generate_html(self, parsed_data: Dict) -> str:
         header_info = parsed_data["header"]
         sections = parsed_data["sections"]  # This is now a list of dicts
+
+        # Embed CSS directly and also include a <link> tag for test compatibility
+        css_content = ""
+        css_link_tag = f'<link rel="stylesheet" href="{self.css_file_path}">\n'
+        try:
+            with open(self.css_file_path, "r", encoding="utf-8") as css_file:
+                css_content = css_file.read()
+        except Exception as e:
+            print(
+                f"Warning: Could not read CSS file '{self.css_file_path}': {e}",
+                file=sys.stderr,
+            )
+            css_content = ""
+            css_link_tag = ""  # Don't include link if file doesn't exist
+
         html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
     <title>{header_info.get("name", "Resume")}</title>
-    <link rel="stylesheet" href="{self.css_file_path}">
+    {css_link_tag}<style>\n{css_content}\n</style>
 </head>
 <body>
 """

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Samuel Vimes</title>
+    <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@media print {
+    body {
+        margin: 0;
+        background: white !important;
+    }
+
+    .no-print {
+        display: none;
+    }
+
+    /* Ensure colors print well */
+    h1,
+    h2 {
+        color: #1a1a1a !important;
+    }
+
+    .header-gradient {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* General body styling */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    line-height: 1.6;
+    color: #2d3748;
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 0.5in;
+    font-size: 11pt;
+    background: white;
+    font-weight: 400;
+}
+
+/* Header section with visual separator */
+.header-section {
+    background: white;
+    margin: -0.5in -0.5in 0.4in -0.5in;
+    padding: 2rem 0.5in 1.5rem 0.5in;
+    border-radius: 0;
+    position: relative;
+}
+
+.header-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 1in);
+    height: 3px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+    border-radius: 2px;
+}
+
+/* Main resume name heading */
+h1 {
+    font-size: 28pt;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #1a202c;
+    letter-spacing: -0.02em;
+}
+
+/* Subtitle for job title/specialization */
+.subtitle {
+    font-size: 14pt;
+    color: #4a5568;
+    margin-bottom: 12px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* Contact information block */
+.contact-info {
+    font-size: 11pt;
+    margin-bottom: 0;
+    color: #718096;
+    font-weight: 400;
+}
+
+/* Styling for links within contact info */
+.contact-info a {
+    color: #667eea;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+    transition: border-bottom-color 0.2s ease;
+}
+
+.contact-info a:hover {
+    border-bottom-color: #764ba2;
+}
+
+/* Content wrapper for sections */
+.content-wrapper {
+    background: white;
+    margin-top: 0;
+}
+
+/* Section titles (e.g., Experience, Education) */
+h2 {
+    font-size: 16pt;
+    font-weight: 600;
+    color: #2d3748;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 28px 0 16px 0;
+    position: relative;
+    letter-spacing: -0.01em;
+}
+
+h2::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
+}
+
+/* First section title has no top margin */
+h2:first-of-type {
+    margin-top: 0;
+}
+
+/* Sub-section titles */
+h3 {
+    font-size: 13pt;
+    font-weight: 600;
+    margin: 18px 0 8px 0;
+    color: #4a5568;
+}
+
+/* Container for items that have a main part and a right-aligned part */
+.list-item-container-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Styling for the main identifying name/title in a list item */
+.item-name {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 12pt;
+}
+
+/* Styling for secondary information, often aligned to the right */
+.item-meta {
+    font-style: italic;
+    color: #718096;
+    font-size: 10pt;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Unordered list styling */
+ul {
+    margin: 8px 0 20px 0;
+    padding-left: 20px;
+}
+
+/* List item styling */
+li {
+    margin-bottom: 5px;
+    text-align: justify;
+    color: #4a5568;
+    line-height: 1.6;
+}
+
+li::marker {
+    color: #667eea;
+}
+
+/* Styling for aligned list items (e.g., Technical Expertise) */
+.aligned-list-item {
+    margin-bottom: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+}
+
+/* Styling for the category part of an aligned list item */
+.aligned-list-item strong {
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 11pt;
+    width: 170px;
+    flex-shrink: 0;
+}
+
+/* Styling for the description part of an aligned list item */
+.aligned-list-item span {
+    flex-grow: 1;
+}
+
+/* Styling for education items or similar simple list structures */
+.simple-list-item {
+    margin-bottom: 4px;
+}
+
+/* "Save to PDF" instruction block styling */
+.no-print {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+}
+
+/* General paragraph content styling */
+.paragraph-content {
+    margin: 8px 0 20px 0;
+    text-align: justify;
+    line-height: 1.6;
+    color: #4a5568;
+}
+
+/* Enhanced link styling in content */
+a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    color: #764ba2;
+    border-bottom-color: #764ba2;
+}
+
+/* Strong text styling */
+strong {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Emphasis styling */
+em {
+    color: #718096;
+    font-style: italic;
+}
+</style>
+</head>
+<body>
+<div class="header-section"><h1>Samuel Vimes</h1><div class="subtitle"><strong>His Grace, The Duke of Ankh, Commander of the Ankh-Morpork City Watch</strong></div><div class="contact-info">Ankh-Morpork, The Discworld | Often Found at The Sign of the Genuinely Surprised Man (Duty Calls) | <a href="https://wiki.lspace.org/Cable_Street_Particulars">Cable Street Particulars</a></div></div><div class="content-wrapper">
+        <h2>Summary</h2>
+        <p class="paragraph-content">A seasoned copper with decades of experience keeping the peace (or at least, a semblance of it) in the most... vibrant city on the Disc. Proven ability to manage diverse teams (including, but not limited to, werewolves, dwarves, trolls, and a gargoyle with a penchant for pigeon-fancying). Expert in applied thaumatology (mostly knowing when to call in a wizard), advanced street-level diplomacy, and the proper application of a truncheon. Seeking to continue serving the public, ideally with less paperwork and more actual policing.</p>
+        <h2>Experience</h2><div class="list-item-container-flex"><span><span class="item-name">Ankh-Morpork City Watch</span> | Commander</span><span class="item-meta">Many, Many Years - Present (It all blurs together after a while)</span></div><ul><li>Transformed a ragtag bunch of misfits into a (mostly) functioning law enforcement agency.</li><li>Successfully navigated numerous city-wide crises, often involving dragons, golems, inter-species conflicts, and the occasional sentient pear.</li><li>Pioneered innovative policing techniques, such as the "Vimes' Boots" theory of socio-economic urban policing.</li><li>Negotiated treaties, quelled riots (sometimes by starting them, long story), and generally kept the lid on a city that's always simmering.</li><li>Managed the Watch budget, a feat more terrifying than facing down a horde of angry trolls.</li><li>Instituted the "copper's hunch" as a legitimate investigative tool, with surprising accuracy.</li></ul><div class="list-item-container-flex"><span><span class="item-name">Ankh-Morpork City Watch</span> | Captain, Night Watch</span><span class="item-meta">The Murky Past - Until Promotion (Mostly involved chasing shadows and trying to stay sober)</span></div><ul><li>Survived. This was a significant achievement in itself.</li><li>Learned the streets of Ankh-Morpork better than the back of his own hand (which, to be fair, has seen better days).</li><li>Developed a healthy cynicism and an unhealthy relationship with cheap cigars.</li></ul><div class="list-item-container-flex"><span><span class="item-name">Various Odd Jobs & Misadventures</span></span><span class="item-meta">Pre-Watch Years - Best Not Discussed in Polite Company</span></div><ul><li>Acquired a unique set of skills, many of which are surprisingly useful in law enforcement.</li></ul><h2>Questionable Expertise</h2><div class="aligned-list-item"><strong>Urban Pacification:</strong><span>Crowd control, riot suppression (active and preventative), advanced shouting.</span></div><div class="aligned-list-item"><strong>Inter-Species Liaisons:</strong><span>Fluent in Grunts, Growls, and Pointed Silences.</span></div><div class="aligned-list-item"><strong>Street Smarts:</strong><span>Can identify a con artist from a mile away (usually because they're trying to sell him something).</span></div><div class="aligned-list-item"><strong>Weaponry:</strong><span>Truncheon (Master), Sword (Reluctant User), Disarming Sarcasm (Expert).</span></div><div class="aligned-list-item"><strong>Diplomacy:</strong><span>Surprisingly effective, mostly by being more stubborn than the other party.</span></div><h2>Notable Achievements</h2><ul><li>Survived multiple assassination attempts (it's practically a hobby at this point).</li><li>Successfully married Lady Sybil Ramkin (a feat in itself).</li><li>Consistently solved crimes that baffled more "conventional" thinkers.</li><li>Once arrested the Patrician. He got better.</li><li>Maintained a semblance of order in Ankh-Morpork, which is like trying to nail jelly to a wall.</li></ul><h2>Education</h2><div class="simple-list-item"><strong class="item-name">School of Hard Knocks</strong> - Ankh-Morpork Streets (Ongoing)</div><div class="simple-list-item"><strong class="item-name">Honorary Doctorate in Keeping a Lid On It</strong> - Unseen University (Probably, they're vague about these things)</div>
+        <h2>Languages</h2>
+        <p class="paragraph-content">Morporkian (Native) | Various Guttural Utterances (Fluent) | Troll (Conversational, if you shout)</p>
+        </div><div class="no-print"><strong>📄 To save as PDF:</strong> Press Ctrl+P (or Cmd+P on Mac) and select "Save as PDF"</div></body></html>
