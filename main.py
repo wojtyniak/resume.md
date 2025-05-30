@@ -18,27 +18,45 @@ class ResumeParser:
 
     def _determine_section_type(self, content_lines: List[str]) -> str:
         """Determines the type of a section based on its content lines."""
-        if not content_lines:
+        actual_content_lines = [line.strip() for line in content_lines if line.strip()]
+
+        if not actual_content_lines:
             return "paragraph"
 
-        if any(line.strip().startswith("### ") for line in content_lines):
+        # 1. Timeline (### Company | Role)
+        if any(line.startswith("### ") for line in actual_content_lines):
             return "timeline"
 
+        # 2. Aligned List (**Category:** Details)
         aligned_list_pattern = r"^\*\*(.+?):\*\*\s*(.*)$"
-        if any(re.match(aligned_list_pattern, line.strip()) for line in content_lines):
+        aligned_matches = 0
+        for line in actual_content_lines:
+            if re.match(aligned_list_pattern, line):
+                aligned_matches += 1
+        if aligned_matches > 0 and (aligned_matches / len(actual_content_lines)) >= 0.5:
             return "aligned_list"
 
-        bullet_lines = 0
-        non_empty_lines = 0
-        for line_content in content_lines:
-            line = line_content.strip()
-            if line:
-                non_empty_lines += 1
-                if line.startswith("- "):
-                    bullet_lines += 1
+        # 3. Description List (**Term** - Description)
+        description_list_pattern = r"^\*\*(.+?)\*\*\s*-\s*(.*)$"
+        description_matches = 0
+        for line in actual_content_lines:
+            if re.match(description_list_pattern, line):
+                description_matches += 1
+        if (
+            description_matches > 0
+            and (description_matches / len(actual_content_lines)) >= 0.5
+        ):
+            return "description_list"
 
-        if non_empty_lines > 0 and (bullet_lines / non_empty_lines) >= 0.5:
+        # 4. Bullet List (- Item)
+        bullet_lines = 0
+        for line in actual_content_lines:
+            if line.startswith("- "):
+                bullet_lines += 1
+
+        if bullet_lines > 0 and (bullet_lines / len(actual_content_lines)) >= 0.5:
             return "bullet_list"
+
         return "paragraph"
 
     def parse_markdown(self, content: str) -> Dict:
@@ -226,18 +244,6 @@ class HTMLGenerator:
                 skills.append((category, skill_list))
         return skills
 
-    def parse_education(self, content: str) -> List[Dict]:
-        """Parse education section"""
-        education = []
-        lines = content.strip().split("\n")
-        for line in lines:
-            if "**" in line and "-" in line:
-                parts = line.split(" - ", 1)
-                degree = parts[0].replace("**", "").strip()
-                school_info = parts[1].strip() if len(parts) > 1 else ""
-                education.append({"degree": degree, "school": school_info})
-        return education
-
     def generate_header(self, header_info: Dict) -> str:
         html = '<div class="header-section">'
         if "name" in header_info:
@@ -302,18 +308,32 @@ class HTMLGenerator:
         skills = self.parse_technical_expertise(content)
         html = f"<h2>{title}</h2>"
         for category, skill_list in skills:
-            html += f'<div class="aligned-list-item"><strong>{self.process_text(category)}:</strong> {self.process_text(skill_list)}</div>'
+            processed_category = self.process_text(category)
+            processed_skill_list = self.process_text(skill_list)
+            html += f'<div class="aligned-list-item"><strong>{processed_category}:</strong> {processed_skill_list}</div>'
         return html
 
-    def generate_education(self, title: str, content: str) -> str:
-        education_items = self.parse_education(content)
+    def generate_description_list_section(self, title: str, content: str) -> str:
+        """Generates an HTML section for a description list (e.g., **Term** - Definition)."""
         html = f"<h2>{title}</h2>"
-        for item in education_items:
-            html += '<div class="simple-list-item">'
-            html += f'<strong class="item-name">{self.process_text(item["degree"])}</strong>'
-            if item["school"]:
-                html += f" - {self.process_text(item['school'])}"
-            html += "</div>"
+        lines = content.strip().split("\n")
+        item_pattern = r"^\*\*(.+?)\*\*\s*-\s*(.*)$"
+        for line_content in lines:
+            line = line_content.strip()
+            match = re.match(item_pattern, line)
+            if match:
+                term = self.process_text(match.group(1).strip())
+                description = self.process_text(match.group(2).strip())
+
+                html += '<div class="simple-list-item">'  # Using existing class for styling consistency
+                html += f'<strong class="item-name">{term}</strong>'
+                if (
+                    description
+                ):  # Only add " - " and description if description is not empty
+                    html += f" - {description}"
+                html += "</div>"
+            # Optionally, handle lines that don\'t match the pattern, e.g., as simple paragraphs within the section
+            # For now, non-matching lines are ignored in this structured list.
         return html
 
     def generate_html(self, parsed_data: Dict) -> str:
@@ -337,6 +357,7 @@ class HTMLGenerator:
             "aligned_list": self.generate_technical_expertise,
             "bullet_list": self.generate_generic_bullet_list_section,
             "paragraph": self.generate_generic_paragraph_section,
+            "description_list": self.generate_description_list_section,
         }
 
         for section_data in sections:
@@ -344,11 +365,7 @@ class HTMLGenerator:
             section_type = section_data["type"]
             section_content = section_data["content"]
 
-            if section_title == "Education" and self.parse_education(
-                section_content
-            ):  # Specific handler for Education
-                html += self.generate_education(section_title, section_content)
-            elif section_type in section_type_renderers:
+            if section_type in section_type_renderers:
                 html += section_type_renderers[section_type](
                     section_title, section_content
                 )

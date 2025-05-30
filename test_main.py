@@ -84,6 +84,8 @@ Some notes.
         )
         self.assertEqual(education_section["type"], "paragraph")
         self.assertIn("**BS CS** - University Z", education_section["content"])
+        self.assertIn("_2000-2004_", education_section["content"])
+        self.assertIn("Some notes.", education_section["content"])
 
     def test_empty_input(self):
         parsed_data = self.parser.parse_markdown("")
@@ -110,10 +112,48 @@ jane.doe@email.com
         )
 
         # Aligned List
-        aligned_content = "**Tech:** Go, Python\n**Tools:** Docker"
+        aligned_content_majority = "**Tech:** Go, Python\n**Tools:** Docker, K8s"
         self.assertEqual(
-            self.parser._determine_section_type(aligned_content.split("\n")),
+            self.parser._determine_section_type(aligned_content_majority.split("\n")),
             "aligned_list",
+        )
+        aligned_content_minority = (
+            "**Tech:** Go, Python\nJust a normal line\nAnother normal line"
+        )
+        self.assertEqual(
+            self.parser._determine_section_type(aligned_content_minority.split("\n")),
+            "paragraph",  # Not majority
+        )
+        aligned_content_single_good = "**Tech:** Go, Python"
+        self.assertEqual(
+            self.parser._determine_section_type(
+                aligned_content_single_good.split("\n")
+            ),
+            "aligned_list",
+        )
+
+        # Description List
+        desc_list_clear = "**Degree 1** - School A\n**Degree 2** - School B"
+        self.assertEqual(
+            self.parser._determine_section_type(desc_list_clear.split("\n")),
+            "description_list",
+        )
+        desc_list_mixed_majority = "**Degree 1** - School A\nSome other note\n**Degree 2** - School B\n**Degree 3** - School C"  # 3/4 match
+        self.assertEqual(
+            self.parser._determine_section_type(desc_list_mixed_majority.split("\n")),
+            "description_list",
+        )
+        desc_list_mixed_minority = (
+            "**Degree 1** - School A\nSome other note\nAnother note also"  # 1/3 match
+        )
+        self.assertEqual(
+            self.parser._determine_section_type(desc_list_mixed_minority.split("\n")),
+            "paragraph",
+        )
+        desc_list_single_good = "**Degree 1** - School A"
+        self.assertEqual(
+            self.parser._determine_section_type(desc_list_single_good.split("\n")),
+            "description_list",
         )
 
         # Bullet List
@@ -128,13 +168,6 @@ jane.doe@email.com
         self.assertEqual(
             self.parser._determine_section_type(bullet_content_mixed.split("\n")),
             "bullet_list",
-        )
-
-        # Paragraph
-        paragraph_content = "This is a plain paragraph.\nIt has multiple lines."
-        self.assertEqual(
-            self.parser._determine_section_type(paragraph_content.split("\n")),
-            "paragraph",
         )
 
         # Single line paragraph (not matching other types)
@@ -174,10 +207,10 @@ jane.doe@email.com
             "bullet_list",
         )
 
-        wojtek_education = "**M.S. Internet Engineering** - Wrocław University of Technology, Poland (2011-2013)\n**B.S. Computer Science** - Wrocław University of Technology, Poland (2007-2011)"  # (aligned_list because of parse_education logic, but generic type is paragraph)
+        wojtek_education = "**M.S. Internet Engineering** - Wrocław University of Technology, Poland (2011-2013)\n**B.S. Computer Science** - Wrocław University of Technology, Poland (2007-2011)"
         self.assertEqual(
             self.parser._determine_section_type(wojtek_education.split("\n")),
-            "paragraph",
+            "description_list",  # Changed from paragraph
         )
 
     def test_vimes_header_parsing(self):
@@ -270,15 +303,6 @@ _Jan 2020 - Dec 2022_
         expected = [("Languages", "Python, Go"), ("Databases", "SQL, NoSQL")]
         self.assertEqual(self.generator.parse_technical_expertise(content), expected)
 
-    def test_parse_education(self):
-        content = """**M.S. Computer Science** - University A (2020)
-**B.S. Software Engineering** - University B (2018)"""
-        expected = [
-            {"degree": "M.S. Computer Science", "school": "University A (2020)"},
-            {"degree": "B.S. Software Engineering", "school": "University B (2018)"},
-        ]
-        self.assertEqual(self.generator.parse_education(content), expected)
-
     def test_generate_header(self):
         header_info = {
             "name": "Alice Wonderland",
@@ -349,23 +373,33 @@ _2022 - Present_
             """<div class="aligned-list-item"><strong>Core:</strong> <em>Go</em>, Python</div>""",
             html,
         )
+        self.assertIn(  # Check for the second item too
+            """<div class="aligned-list-item"><strong>Tools:</strong> Docker, <strong>Kubernetes</strong></div>""",
+            html,
+        )
 
-    def test_generate_education_specific_parser(
-        self,
-    ):  # Test for the specific Education parser
-        content = "**PhD** - _Wonderland Uni_\n**MSc** - Another Place"
-        html = self.generator.generate_education(
-            "Academia", content
-        )  # Title is now an arg
-        self.assertIn("<h2>Academia</h2>", html)
+    def test_generate_description_list_section(self):
+        content = """**Term One** - Its _description_ here.
+**Term Two** - Another description, [link](http://example.com).
+Not a description list item.
+**Term Three** - Final one."""
+        html = self.generator.generate_description_list_section("Descriptions", content)
+        self.assertIn("<h2>Descriptions</h2>", html)
         self.assertIn(
-            '<div class="simple-list-item"><strong class="item-name">PhD</strong> - <em>Wonderland Uni</em></div>',
+            '<div class="simple-list-item"><strong class="item-name">Term One</strong> - Its <em>description</em> here.</div>',
             html,
         )
         self.assertIn(
-            '<div class="simple-list-item"><strong class="item-name">MSc</strong> - Another Place</div>',
+            '<div class="simple-list-item"><strong class="item-name">Term Two</strong> - Another description, <a href="http://example.com">link</a>.</div>',
             html,
         )
+        self.assertIn(
+            '<div class="simple-list-item"><strong class="item-name">Term Three</strong> - Final one.</div>',
+            html,
+        )
+        self.assertNotIn(
+            "Not a description list item.", html
+        )  # Non-matching lines are ignored by current implementation
 
     def test_generate_html_integration_with_typed_sections(self):
         parsed_data = {
@@ -388,18 +422,18 @@ _2022 - Present_
                 {
                     "title": "Toolset",
                     "type": "aligned_list",
-                    "content": "**Software:** Editor, Compiler",
+                    "content": "**Software:** Editor, Compiler\n**Hardware:** Mouse, Keyboard",
                 },
                 {
                     "title": "Work History",
                     "type": "timeline",
                     "content": "### Big Corp | Coder\n_Then - Now_\n- Wrote code.",
                 },
-                {
-                    "title": "Education",
-                    "type": "paragraph",
-                    "content": "**BSc.** - Good School\nSome notes about school.",
-                },  # Will be handled by special Education logic
+                {  # This section will be rendered by generate_description_list_section
+                    "title": "Qualifications",
+                    "type": "description_list",
+                    "content": "**Degree Alpha** - School One\n**Certificate Beta** - School Two\nThis line will be ignored.",
+                },
             ],
         }
         html = self.generator.generate_html(parsed_data)
@@ -428,25 +462,29 @@ _2022 - Present_
             """<div class="aligned-list-item"><strong>Software:</strong> Editor, Compiler</div>""",
             html,
         )
+        self.assertIn(
+            """<div class="aligned-list-item"><strong>Hardware:</strong> Mouse, Keyboard</div>""",
+            html,
+        )
 
         # Work History (timeline)
         self.assertIn("<h2>Work History</h2>", html)
         self.assertIn('<span class="item-name">Big Corp</span>', html)
         self.assertIn("<li>Wrote code.</li>", html)
 
-        # Education (special handling by title "Education", content fits its parser)
-        self.assertIn("<h2>Education</h2>", html)
-        # The parse_education and generate_education methods are quite specific.
-        # It expects "**Degree** - School" format primarily.
-        # The "Some notes about school." part from the test data for this section was on a new line
-        # and would not be parsed as part of the school by parse_education, so it won't be rendered.
+        # Qualifications (description_list)
+        self.assertIn("<h2>Qualifications</h2>", html)
         self.assertIn(
-            '<div class="simple-list-item"><strong class="item-name">BSc.</strong> - Good School</div>',
+            '<div class="simple-list-item"><strong class="item-name">Degree Alpha</strong> - School One</div>',
+            html,
+        )
+        self.assertIn(
+            '<div class="simple-list-item"><strong class="item-name">Certificate Beta</strong> - School Two</div>',
             html,
         )
         self.assertNotIn(
-            "Some notes about school.", html
-        )  # Based on current parse_education logic
+            "This line will be ignored.", html
+        )  # Check that non-matching lines are ignored
 
         # Check for the PDF instruction div
         self.assertIn('<div class="no-print"><strong>📄 To save as PDF:</strong>', html)

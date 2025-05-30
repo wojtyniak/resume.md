@@ -183,25 +183,29 @@ li::marker {
 
 /* Styling for aligned list items (e.g., Technical Expertise) */
 .aligned-list-item {
-    margin-bottom: 8px;
-    padding: 4px 0;
-    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
 }
 
 /* Styling for the category part of an aligned list item */
 .aligned-list-item strong {
-    display: inline-block;
-    width: 150px;
     color: #2d3748;
     font-weight: 600;
     font-size: 11pt;
+    width: 170px;
+    flex-shrink: 0;
+}
+
+/* Styling for the description part of an aligned list item */
+.aligned-list-item span {
+    flex-grow: 1;
 }
 
 /* Styling for education items or similar simple list structures */
 .simple-list-item {
-    margin-bottom: 6px;
-    padding: 4px 0;
-    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 4px;
 }
 
 /* "Save to PDF" instruction block styling */
