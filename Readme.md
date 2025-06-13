@@ -66,6 +66,10 @@ _2019 - Present_
 **B.Sc. Computer Science** - University of Example
 ```
 
+## Default Style
+
+![Screenshot of the default style](examples/example_resume.jpeg)
+
 ## Requirements
 
 - Python 3
