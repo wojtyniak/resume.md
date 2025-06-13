@@ -2,7 +2,7 @@
 
 **His Grace, The Duke of Ankh, Commander of the Ankh-Morpork City Watch**
 
-Ankh-Morpork, The Discworld | Often Found at The Sign of the Genuinely Surprised Man (Duty Calls) | [Cable Street Particulars](https://wiki.lspace.org/Cable_Street_Particulars)
+Ankh-Morpork, The Discworld | [Cable Street Particulars](https://wiki.lspace.org/Cable_Street_Particulars)
 
 ## Summary
 
@@ -23,7 +23,7 @@ _Many, Many Years - Present (It all blurs together after a while)_
 
 ### Ankh-Morpork City Watch | Captain, Night Watch
 
-_The Murky Past - Until Promotion (Mostly involved chasing shadows and trying to stay sober)_
+_The Murky Past - Until Promotion_
 
 -   Survived. This was a significant achievement in itself.
 -   Learned the streets of Ankh-Morpork better than the back of his own hand (which, to be fair, has seen better days).
